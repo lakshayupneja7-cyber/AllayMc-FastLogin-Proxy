@@ -1,0 +1,7 @@
+{
+  "id": "allaymcfastloginproxy",
+  "name": "AllayMcFastLoginProxy",
+  "version": "1.0.0",
+  "main": "com.allaymc.fastloginproxy.AllayMcFastLoginProxy",
+  "authors": ["AllayMc"]
+}
