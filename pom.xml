@@ -1,0 +1,76 @@
+package com.allaymc.loginsecurity.service;
+
+import com.allaymc.loginsecurity.AllayMcLoginSecurityPlugin;
+
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URI;
+import java.util.UUID;
+
+public class PremiumCheckService {
+
+    private final AllayMcLoginSecurityPlugin plugin;
+
+    public PremiumCheckService(AllayMcLoginSecurityPlugin plugin) {
+        this.plugin = plugin;
+    }
+
+    public boolean isPremiumName(String username) {
+        return fetchOfficialUuid(username) != null;
+    }
+
+    public UUID fetchOfficialUuid(String username) {
+        try {
+            String url = "https://api.mojang.com/users/profiles/minecraft/" + username;
+            HttpURLConnection connection = (HttpURLConnection) URI.create(url).toURL().openConnection();
+
+            connection.setConnectTimeout(1500);
+            connection.setReadTimeout(1500);
+            connection.setRequestMethod("GET");
+
+            int code = connection.getResponseCode();
+            if (code != 200) {
+                return null;
+            }
+
+            StringBuilder response = new StringBuilder();
+            try (BufferedReader reader = new BufferedReader(
+                    new InputStreamReader(connection.getInputStream()))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    response.append(line);
+                }
+            }
+
+            String body = response.toString();
+            String idValue = extractJsonValue(body, "id");
+            if (idValue == null || idValue.length() != 32) {
+                return null;
+            }
+
+            String dashed = idValue.replaceFirst(
+                    "(\\w{8})(\\w{4})(\\w{4})(\\w{4})(\\w{12})",
+                    "$1-$2-$3-$4-$5"
+            );
+
+            return UUID.fromString(dashed);
+
+        } catch (Exception e) {
+            plugin.getLogger().warning("Premium check failed: " + e.getMessage());
+            return null;
+        }
+    }
+
+    private String extractJsonValue(String json, String key) {
+        String search = "\"" + key + "\":\"";
+        int start = json.indexOf(search);
+        if (start == -1) return null;
+
+        start += search.length();
+        int end = json.indexOf("\"", start);
+        if (end == -1) return null;
+
+        return json.substring(start, end);
+    }
+}
